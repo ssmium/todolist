@@ -185,12 +185,13 @@
     .popup-input:focus { border-color: #cba6f7; background: white; }
 
     .popup-datetime {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
       gap: 10px;
     }
 
     .popup-datetime-field {
+      flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       gap: 5px;
@@ -200,15 +201,32 @@
       font-size: 11px;
       font-weight: 600;
       color: #6c7086;
-      padding-left: 2px;
     }
 
-    input[type="date"].popup-input,
-    input[type="time"].popup-input {
-      width: 100%;
-      padding: 11px 10px;
-      font-size: 13px;
+    /* 실제 date/time input은 숨기고 커스텀 버튼으로 트리거 */
+    .hidden-dt {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 1px;
+      height: 1px;
     }
+
+    .dt-btn {
+      width: 100%;
+      background: #f8f9fa;
+      border: 1.5px solid #e1e4e8;
+      border-radius: 10px;
+      padding: 12px 10px;
+      font-size: 13px;
+      color: #1e1e2e;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dt-btn:focus { border-color: #cba6f7; background: white; outline: none; }
 
     .popup-confirm {
       background: #cba6f7;
@@ -377,11 +395,13 @@
     <div class="popup-datetime">
       <div class="popup-datetime-field">
         <span class="popup-datetime-label">📅 날짜</span>
-        <input class="popup-input" id="t-date" type="date">
+        <button type="button" class="dt-btn" id="date-btn">날짜 선택</button>
+        <input class="hidden-dt" id="t-date" type="date">
       </div>
       <div class="popup-datetime-field">
         <span class="popup-datetime-label">🕐 시간</span>
-        <input class="popup-input" id="t-time" type="time">
+        <button type="button" class="dt-btn" id="time-btn">시간 선택</button>
+        <input class="hidden-dt" id="t-time" type="time">
       </div>
     </div>
     <select class="popup-input" id="t-priority">
@@ -526,6 +546,10 @@
     overlay.classList.remove('open');
     document.getElementById('t-title').value = '';
     document.getElementById('t-time').value = '';
+    document.getElementById('time-btn').textContent = '시간 선택';
+    // 날짜는 오늘로 리셋
+    document.getElementById('t-date').value = today;
+    document.getElementById('date-btn').textContent = fmtDate(today);
   }
 
   document.getElementById('open-popup').addEventListener('click', openPopup);
@@ -547,6 +571,38 @@
       render();
     });
   });
+
+  // 날짜/시간 커스텀 버튼
+  var dateBtn = document.getElementById('date-btn');
+  var timeBtn = document.getElementById('time-btn');
+  var dateInput = document.getElementById('t-date');
+  var timeInput = document.getElementById('t-time');
+
+  function fmtDate(v) {
+    if (!v) return '날짜 선택';
+    var d = new Date(v + 'T00:00:00');
+    return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+  }
+  function fmtTime(v) {
+    if (!v) return '시간 선택';
+    return v;
+  }
+
+  dateBtn.addEventListener('click', function() {
+    try { dateInput.showPicker(); } catch(e) { dateInput.click(); }
+  });
+  timeBtn.addEventListener('click', function() {
+    try { timeInput.showPicker(); } catch(e) { timeInput.click(); }
+  });
+  dateInput.addEventListener('change', function() {
+    dateBtn.textContent = fmtDate(dateInput.value);
+  });
+  timeInput.addEventListener('change', function() {
+    timeBtn.textContent = fmtTime(timeInput.value);
+  });
+
+  // 초기 날짜 버튼 텍스트
+  dateBtn.textContent = fmtDate(dateInput.value);
 
   render();
 </script>
