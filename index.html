@@ -160,9 +160,25 @@
     .popup-input:focus { border-color: #cba6f7; background: white; }
 
     .popup-row {
-      display: grid;
-      grid-template-columns: 3fr 2fr;
+      display: flex;
+      flex-direction: column;
       gap: 10px;
+    }
+
+    .popup-row-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* date/time input 전용: 브라우저 기본 렌더링 공간 확보 */
+    input[type="date"].popup-input,
+    input[type="time"].popup-input {
+      padding: 12px 8px;
+      font-size: 13px;
+      min-width: 0;
+      -webkit-appearance: none;
+      appearance: none;
     }
 
     .popup-confirm {
@@ -330,8 +346,10 @@
     <div class="popup-title">새 할 일</div>
     <input class="popup-input" id="t-title" type="text" placeholder="할 일을 입력하세요...">
     <div class="popup-row">
-      <input class="popup-input" id="t-date" type="date">
-      <input class="popup-input" id="t-time" type="time">
+      <div class="popup-row-inner">
+        <input class="popup-input" id="t-date" type="date">
+        <input class="popup-input" id="t-time" type="time">
+      </div>
     </div>
     <select class="popup-input" id="t-priority">
       <option value="medium">우선순위: 보통</option>
