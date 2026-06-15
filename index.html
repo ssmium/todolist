@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스케줄러 Todo</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e1e2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="스케줄러">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      gap: 0;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      min-height: 100vh;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      gap: 24px;
+      flex-shrink: 0;
+    }
+
+    .sidebar h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #cba6f7;
+      padding: 0 8px;
+    }
+
+    .calendar {
+      background: #313244;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .cal-header span {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #cba6f7;
+    }
+
+    .cal-nav {
+      background: none;
+      border: none;
+      color: #cdd6f4;
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .cal-nav:hover { background: #45475a; }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      text-align: center;
+    }
+
+    .cal-day-name {
+      font-size: 0.7rem;
+      color: #6c7086;
+      padding: 4px 0;
+      font-weight: 600;
+    }
+
+    .cal-day {
+      font-size: 0.78rem;
+      padding: 5px 2px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #cdd6f4;
+      transition: background 0.15s;
+      position: relative;
+    }
+    .cal-day:hover { background: #45475a; }
+    .cal-day.other-month { color: #45475a; }
+    .cal-day.today { background: #cba6f7; color: #1e1e2e; font-weight: 700; }
+    .cal-day.selected { background: #89b4fa; color: #1e1e2e; font-weight: 700; }
+    .cal-day.has-task::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 4px;
+      background: #a6e3a1;
+      border-radius: 50%;
+    }
+    .cal-day.today.has-task::after { background: #1e1e2e; }
+
+    .filter-section { display: flex; flex-direction: column; gap: 6px; }
+    .filter-section h3 { font-size: 0.75rem; color: #6c7086; text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; }
+
+    .filter-btn {
+      background: none;
+      border: none;
+      color: #cdd6f4;
+      text-align: left;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+    .filter-btn:hover { background: #313244; }
+    .filter-btn.active { background: #313244; color: #cba6f7; font-weight: 600; }
+    .filter-btn .count {
+      margin-left: auto;
+      background: #45475a;
+      color: #cdd6f4;
+      font-size: 0.72rem;
+      padding: 1px 7px;
+      border-radius: 10px;
+    }
+
+    /* Main */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 32px;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    .main-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .main-header h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1e1e2e;
+    }
+
+    .date-display {
+      font-size: 0.9rem;
+      color: #6c7086;
+    }
+
+    /* Add task form */
+    .add-form {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #6c7086;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select {
+      border: 1.5px solid #e1e4e8;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.9rem;
+      color: #1e1e2e;
+      outline: none;
+      transition: border-color 0.15s;
+      background: white;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #cba6f7; }
+
+    #task-input { width: 260px; }
+    #task-date { width: 150px; }
+    #task-time { width: 120px; }
+    #task-priority { width: 110px; }
+
+    .add-btn {
+      background: #cba6f7;
+      color: #1e1e2e;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .add-btn:hover { background: #b48ded; transform: translateY(-1px); }
+    .add-btn:active { transform: translateY(0); }
+
+    /* Stats */
+    .stats {
+      display: flex;
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      flex: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-card .num {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1e1e2e;
+    }
+
+    .stat-card .label {
+      font-size: 0.8rem;
+      color: #6c7086;
+    }
+
+    .stat-card.done .num { color: #a6e3a1; }
+    .stat-card.pending .num { color: #fab387; }
+    .stat-card.overdue .num { color: #f38ba8; }
+
+    /* Task list */
+    .task-section { display: flex; flex-direction: column; gap: 12px; }
+
+    .task-section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #6c7086;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .task-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e1e4e8;
+    }
+
+    .task-item {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .task-item.done { opacity: 0.6; }
+
+    .task-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2.5px solid #e1e4e8;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .task-check:hover { border-color: #a6e3a1; }
+    .task-item.done .task-check {
+      background: #a6e3a1;
+      border-color: #a6e3a1;
+    }
+    .task-item.done .task-check::after {
+      content: '✓';
+      color: #1e1e2e;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .task-content { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+
+    .task-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #1e1e2e;
+    }
+    .task-item.done .task-title { text-decoration: line-through; color: #6c7086; }
+
+    .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      color: #6c7086;
+    }
+
+    .task-date-tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .priority-badge {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .priority-high { background: #f38ba822; color: #f38ba8; }
+    .priority-medium { background: #fab38722; color: #fab387; }
+    .priority-low { background: #a6e3a122; color: #a6e3a1; }
+
+    .overdue-tag {
+      color: #f38ba8;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .task-delete {
+      background: none;
+      border: none;
+      color: #6c7086;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+    }
+    .task-item:hover .task-delete { opacity: 1; }
+    .task-delete:hover { color: #f38ba8; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #6c7086;
+      font-size: 0.9rem;
+    }
+
+    .empty-state .emoji { font-size: 2.5rem; margin-bottom: 12px; }
+
+    /* 모바일 */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+
+      .sidebar {
+        width: 100%;
+        min-height: unset;
+        padding: 16px;
+        gap: 16px;
+      }
+
+      .calendar { display: none; }
+
+      .filter-section { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+      .filter-section h3 { display: none; }
+      .filter-btn { padding: 6px 10px; font-size: 0.8rem; border: 1.5px solid #45475a; border-radius: 20px; }
+      .filter-btn.active { background: #cba6f7; color: #1e1e2e; border-color: #cba6f7; }
+      .filter-btn .count { display: none; }
+
+      .main { padding: 16px; gap: 16px; }
+
+      .add-form { flex-direction: column; gap: 10px; }
+      .form-group { width: 100%; }
+      #task-input, #task-date, #task-time, #task-priority { width: 100%; }
+      .add-btn { width: 100%; padding: 12px; }
+
+      .stats { gap: 8px; }
+      .stat-card { padding: 12px; }
+      .stat-card .num { font-size: 1.4rem; }
+
+      .task-item { padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <h1>📋 스케줄러</h1>
+
+  <div class="calendar">
+    <div class="cal-header">
+      <button class="cal-nav" id="prev-month">‹</button>
+      <span id="cal-title"></span>
+      <button class="cal-nav" id="next-month">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <div class="filter-section">
+    <h3>필터</h3>
+    <button class="filter-btn active" data-filter="all">
+      🗂 전체 <span class="count" id="cnt-all">0</span>
+    </button>
+    <button class="filter-btn" data-filter="today">
+      📅 오늘 <span class="count" id="cnt-today">0</span>
+    </button>
+    <button class="filter-btn" data-filter="upcoming">
+      🔜 예정 <span class="count" id="cnt-upcoming">0</span>
+    </button>
+    <button class="filter-btn" data-filter="overdue">
+      ⚠️ 기한 초과 <span class="count" id="cnt-overdue">0</span>
+    </button>
+    <button class="filter-btn" data-filter="done">
+      ✅ 완료 <span class="count" id="cnt-done">0</span>
+    </button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="main-header">
+    <h2 id="view-title">전체 할 일</h2>
+    <span class="date-display" id="today-display"></span>
+  </div>
+
+  <div class="add-form">
+    <div class="form-group">
+      <label>할 일</label>
+      <input id="task-input" type="text" placeholder="새 할 일을 입력하세요..." />
+    </div>
+    <div class="form-group">
+      <label>날짜</label>
+      <input id="task-date" type="date" />
+    </div>
+    <div class="form-group">
+      <label>시간</label>
+      <input id="task-time" type="time" />
+    </div>
+    <div class="form-group">
+      <label>우선순위</label>
+      <select id="task-priority">
+        <option value="medium">보통</option>
+        <option value="high">높음</option>
+        <option value="low">낮음</option>
+      </select>
+    </div>
+    <button class="add-btn" id="add-btn">+ 추가</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num" id="stat-total">0</div>
+      <div class="label">전체</div>
+    </div>
+    <div class="stat-card done">
+      <div class="num" id="stat-done">0</div>
+      <div class="label">완료</div>
+    </div>
+    <div class="stat-card pending">
+      <div class="num" id="stat-pending">0</div>
+      <div class="label">진행 중</div>
+    </div>
+    <div class="stat-card overdue">
+      <div class="num" id="stat-overdue">0</div>
+      <div class="label">기한 초과</div>
+    </div>
+  </div>
+
+  <div id="task-list-container"></div>
+</main>
+
+<script>
+  const STORAGE_KEY = 'scheduler_tasks';
+  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let currentFilter = 'all';
+  let selectedDate = null;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Calendar state
+  let calYear = new Date().getFullYear();
+  let calMonth = new Date().getMonth();
+
+  function saveTasks() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  function isOverdue(task) {
+    if (task.done || !task.date) return false;
+    const taskDate = task.time ? task.date + 'T' + task.time : task.date;
+    const cmp = task.time ? new Date() : new Date(todayStr);
+    return new Date(taskDate) < cmp;
+  }
+
+  function getTasksForFilter(filter, date = null) {
+    return tasks.filter(t => {
+      if (filter === 'all') return true;
+      if (filter === 'today') return t.date === todayStr;
+      if (filter === 'upcoming') return !t.done && t.date && t.date > todayStr;
+      if (filter === 'overdue') return isOverdue(t);
+      if (filter === 'done') return t.done;
+      if (filter === 'date') return t.date === date;
+      return true;
+    });
+  }
+
+  function updateCounts() {
+    document.getElementById('cnt-all').textContent = tasks.length;
+    document.getElementById('cnt-today').textContent = tasks.filter(t => t.date === todayStr).length;
+    document.getElementById('cnt-upcoming').textContent = tasks.filter(t => !t.done && t.date && t.date > todayStr).length;
+    document.getElementById('cnt-overdue').textContent = tasks.filter(t => isOverdue(t)).length;
+    document.getElementById('cnt-done').textContent = tasks.filter(t => t.done).length;
+  }
+
+  function updateStats() {
+    const total = tasks.length;
+    const done = tasks.filter(t => t.done).length;
+    const overdue = tasks.filter(t => isOverdue(t)).length;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-done').textContent = done;
+    document.getElementById('stat-pending').textContent = total - done;
+    document.getElementById('stat-overdue').textContent = overdue;
+  }
+
+  function formatDate(dateStr, timeStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    const opts = { month: 'long', day: 'numeric', weekday: 'short' };
+    let s = d.toLocaleDateString('ko-KR', opts);
+    if (timeStr) s += ' ' + timeStr;
+    return s;
+  }
+
+  function renderTasks() {
+    const container = document.getElementById('task-list-container');
+    let filtered = currentFilter === 'date'
+      ? getTasksForFilter('date', selectedDate)
+      : getTasksForFilter(currentFilter);
+
+    // Sort: undone first, then by date/time
+    filtered.sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      const ad = (a.date || '9999') + (a.time || '');
+      const bd = (b.date || '9999') + (b.time || '');
+      return ad.localeCompare(bd);
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="emoji">🎉</div>할 일이 없어요!</div>`;
+      return;
+    }
+
+    // Group by date
+    const groups = {};
+    filtered.forEach(t => {
+      const key = t.date || 'no-date';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    });
+
+    let html = '';
+    const sortedKeys = Object.keys(groups).sort();
+    sortedKeys.forEach(key => {
+      let label = key === 'no-date' ? '날짜 없음'
+        : key === todayStr ? '오늘'
+        : (() => {
+            const d = new Date(key + 'T00:00:00');
+            return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+          })();
+
+      html += `<div class="task-section">
+        <div class="task-section-title">${label}</div>`;
+
+      groups[key].forEach(t => {
+        const overdue = isOverdue(t);
+        html += `
+        <div class="task-item ${t.done ? 'done' : ''}" data-id="${t.id}">
+          <div class="task-check" onclick="toggleTask('${t.id}')"></div>
+          <div class="task-content">
+            <div class="task-title">${escHtml(t.title)}</div>
+            <div class="task-meta">
+              ${t.date ? `<span class="task-date-tag">🕐 ${t.time || '하루 종일'}</span>` : ''}
+              <span class="priority-badge priority-${t.priority}">${{high:'높음',medium:'보통',low:'낮음'}[t.priority]}</span>
+              ${overdue ? '<span class="overdue-tag">⚠ 기한 초과</span>' : ''}
+            </div>
+          </div>
+          <button class="task-delete" onclick="deleteTask('${t.id}')">✕</button>
+        </div>`;
+      });
+
+      html += `</div>`;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function addTask() {
+    const title = document.getElementById('task-input').value.trim();
+    if (!title) return;
+    const task = {
+      id: Date.now().toString(),
+      title,
+      date: document.getElementById('task-date').value,
+      time: document.getElementById('task-time').value,
+      priority: document.getElementById('task-priority').value,
+      done: false,
+      created: new Date().toISOString()
+    };
+    tasks.unshift(task);
+    saveTasks();
+    document.getElementById('task-input').value = '';
+    refresh();
+  }
+
+  function toggleTask(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = !t.done; saveTasks(); refresh(); }
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    refresh();
+  }
+
+  function refresh() {
+    updateCounts();
+    updateStats();
+    renderTasks();
+    renderCalendar();
+  }
+
+  // Calendar
+  function renderCalendar() {
+    const title = document.getElementById('cal-title');
+    const grid = document.getElementById('cal-grid');
+    title.textContent = `${calYear}년 ${calMonth + 1}월`;
+
+    const dayNames = ['일','월','화','수','목','금','토'];
+    let html = dayNames.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+
+    const first = new Date(calYear, calMonth, 1);
+    const last = new Date(calYear, calMonth + 1, 0);
+    const startDay = first.getDay();
+
+    // Task dates for dot indicators
+    const taskDates = new Set(tasks.map(t => t.date).filter(Boolean));
+
+    // Prev month padding
+    for (let i = 0; i < startDay; i++) {
+      const d = new Date(calYear, calMonth, -startDay + 1 + i);
+      html += `<div class="cal-day other-month">${d.getDate()}</div>`;
+    }
+
+    for (let d = 1; d <= last.getDate(); d++) {
+      const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isToday = dateStr === todayStr;
+      const isSelected = dateStr === selectedDate;
+      const hasTasks = taskDates.has(dateStr);
+      html += `<div class="cal-day ${isToday?'today':''} ${isSelected?'selected':''} ${hasTasks?'has-task':''}"
+        onclick="selectDate('${dateStr}')">${d}</div>`;
+    }
+
+    grid.innerHTML = html;
+  }
+
+  function selectDate(dateStr) {
+    if (selectedDate === dateStr && currentFilter === 'date') {
+      selectedDate = null;
+      setFilter('all');
+      return;
+    }
+    selectedDate = dateStr;
+    currentFilter = 'date';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('view-title').textContent = (() => {
+      const d = new Date(dateStr + 'T00:00:00');
+      return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+    })();
+    refresh();
+  }
+
+  function setFilter(filter) {
+    currentFilter = filter;
+    selectedDate = null;
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.filter === filter);
+    });
+    const titles = { all:'전체 할 일', today:'오늘의 할 일', upcoming:'예정된 할 일', overdue:'기한 초과', done:'완료된 할 일' };
+    document.getElementById('view-title').textContent = titles[filter];
+    refresh();
+  }
+
+  // Event listeners
+  document.getElementById('add-btn').addEventListener('click', addTask);
+  document.getElementById('task-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => setFilter(btn.dataset.filter));
+  });
+
+  document.getElementById('prev-month').addEventListener('click', () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+
+  document.getElementById('next-month').addEventListener('click', () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+
+  // Set today's date as default
+  document.getElementById('task-date').value = todayStr;
+  document.getElementById('today-display').textContent = new Date().toLocaleDateString('ko-KR', {
+    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+  });
+
+  refresh();
+
+</script>
+</body>
+</html>
